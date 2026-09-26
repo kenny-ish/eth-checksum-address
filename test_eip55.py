@@ -3,7 +3,10 @@ import unittest
 from eip55 import checksum_status, to_checksum
 from keccak import keccak256
 
-EIP_VECTORS = [
+# The test vectors from the EIP-55 specification
+ALL_CAPS = ["0x52908400098527886E0F7030069857D2E4169EE7", "0x8617E340B3D01FA5F11F306F4090FD50E238070D"]
+ALL_LOWER = ["0xde709f2102306220921060314715629080e2fb77", "0x27b1fdb04752bbc536007a920d24acb045561c26"]
+NORMAL = [
     "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
     "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359",
     "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB",
@@ -28,16 +31,17 @@ class KeccakTest(unittest.TestCase):
 
 
 class Eip55Test(unittest.TestCase):
-    def test_vectors(self):
-        for v in EIP_VECTORS:
+    def test_all_eip_vectors(self):
+        for v in ALL_CAPS + ALL_LOWER + NORMAL:
             self.assertEqual(to_checksum(v.lower()), v)
-            self.assertEqual(checksum_status(v), "valid")
+            self.assertEqual(checksum_status(v), "valid", v)
 
-    def test_single_case_is_unchecked(self):
-        self.assertEqual(checksum_status(EIP_VECTORS[0].lower()), "unchecked")
+    def test_single_case_without_checksum_is_unchecked(self):
+        self.assertEqual(checksum_status(NORMAL[0].lower()), "unchecked")
+        self.assertEqual(checksum_status("0x" + NORMAL[0][2:].upper()), "unchecked")
 
     def test_flipped_case_is_invalid(self):
-        v = EIP_VECTORS[0]
+        v = NORMAL[0]
         i = next(i for i, ch in enumerate(v) if i > 1 and ch.isalpha())
         flipped = v[:i] + v[i].swapcase() + v[i + 1:]
         self.assertEqual(checksum_status(flipped), "invalid")

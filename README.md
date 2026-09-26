@@ -1,31 +1,51 @@
 # eth-checksum-address
 
-Validate and produce [EIP-55](https://eips.ethereum.org/EIPS/eip-55) mixed-case checksum
-addresses without installing anything. Keccak-256 is implemented in pure Python
-(`hashlib.sha3_256` is the NIST variant and gives different results, so it can't be used here).
+Validates and produces [EIP-55](https://eips.ethereum.org/EIPS/eip-55) mixed-case checksum
+addresses. Keccak-256 is implemented in pure Python, so there are no dependencies.
 
-## Usage
+## How EIP-55 works
+
+Write the address as 40 lowercase hex characters and hash that ASCII string with Keccak-256.
+Then walk the address: every letter (a-f) whose hex digit at the same position in the hash is 8
+or higher is written in upper case. The casing carries about 15 check bits on average, so a
+mistyped address almost never passes.
+
+## Install
 
 ```bash
-python eip55.py 0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed
-# 0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed  no checksum (all one case)
-
-python eip55.py 0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed 0x5AAeb6053F3E94C9b9A09f33669435E7Ef1BeAed
-# 0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed  valid
-# 0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed  INVALID checksum
-
-cat addresses.txt | python eip55.py -
+pip install git+https://github.com/kenny-ish/eth-checksum-address
 ```
 
-The exit code is `1` if any address has a bad checksum, so it can be used in CI to lint
-config files that contain addresses.
+Requires Python 3.10 or newer.
 
-## As a library
+## Command line
+
+```bash
+$ eip55 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
+0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2  no checksum (all one case)
+$ eip55 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 0xc02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2  valid
+0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2  INVALID checksum
+$ cat addresses.txt | eip55 -
+```
+
+The address is WETH on Ethereum mainnet. The second address in the second call has one letter's
+case flipped. The exit code is `1` if any address has a bad checksum, so the tool can guard config
+files in CI. `python eip55.py ...` works without installing.
+
+## Library
 
 ```python
-from eip55 import to_checksum, checksum_status
-to_checksum("0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359")
+from eip55 import checksum_status, to_checksum
+
+to_checksum("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
+# '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+checksum_status("0x52908400098527886E0F7030069857D2E4169EE7")
+# 'valid': this address's checksum happens to be all upper case
 ```
+
+`checksum_status` returns `valid`, `unchecked` (a single-case address that carries no checksum)
+or `invalid`.
 
 ## Tests
 
@@ -33,4 +53,5 @@ to_checksum("0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359")
 python -m unittest -v
 ```
 
-The test suite uses the vectors from the EIP text plus known Keccak-256 digests.
+The suite covers all eight test vectors from the EIP, including the all-caps and all-lowercase
+ones, and known Keccak-256 digests. Release notes are in [CHANGELOG.md](CHANGELOG.md).
