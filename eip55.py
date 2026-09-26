@@ -9,6 +9,7 @@ _HEX40 = re.compile(r"^(0x)?[0-9a-fA-F]{40}$")
 
 
 def to_checksum(address: str) -> str:
+    """Return the EIP-55 mixed-case form of a 20-byte hex address (with or without 0x)."""
     if not _HEX40.match(address):
         raise ValueError(f"not a 20-byte hex address: {address!r}")
     addr = address.lower().removeprefix("0x")
@@ -18,17 +19,24 @@ def to_checksum(address: str) -> str:
 
 
 def checksum_status(address: str) -> str:
-    """Return 'valid', 'unchecked' (single case, no checksum) or 'invalid'."""
-    body = address.removeprefix("0x")
+    """Return 'valid', 'unchecked' or 'invalid'.
+
+    'valid' means the casing matches the checksum, including the rare addresses whose checksum
+    is all upper or all lower case. 'unchecked' is a single-case address that doesn't match,
+    i.e. one that carries no checksum.
+    """
     if not _HEX40.match(address):
         return "invalid"
+    body = address.removeprefix("0x")
+    if to_checksum(address) == "0x" + body:
+        return "valid"
     if body == body.lower() or body == body.upper():
         return "unchecked"
-    return "valid" if to_checksum(address) == "0x" + body else "invalid"
+    return "invalid"
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser(description="Check and produce EIP-55 checksum addresses")
     ap.add_argument("addresses", nargs="+", help="addresses, or - to read stdin")
     args = ap.parse_args()
 
