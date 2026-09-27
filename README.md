@@ -1,5 +1,7 @@
 # eth-checksum-address
 
+[![CI](https://github.com/kenny-ish/eth-checksum-address/actions/workflows/ci.yml/badge.svg)](https://github.com/kenny-ish/eth-checksum-address/actions/workflows/ci.yml)
+
 Validates and produces [EIP-55](https://eips.ethereum.org/EIPS/eip-55) mixed-case checksum
 addresses. Keccak-256 is implemented in pure Python, so there are no dependencies.
 
