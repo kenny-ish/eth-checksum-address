@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+- `is_address`, `is_checksum_address` and `normalize`; `normalize` raises `AddressError` (a `ValueError`) saying what is wrong with the input
+
 ## 0.1.0 - 2026-09-26
 
 - `to_checksum` and `checksum_status` for EIP-55 addresses, pure-Python Keccak-256, `eip55` command line tool

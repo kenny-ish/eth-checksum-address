@@ -38,16 +38,26 @@ files in CI. `python eip55.py ...` works without installing.
 ## Library
 
 ```python
-from eip55 import checksum_status, to_checksum
+from eip55 import is_address, is_checksum_address, normalize, to_checksum
 
-to_checksum("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
+normalize("  0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2\n")
 # '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
-checksum_status("0x52908400098527886E0F7030069857D2E4169EE7")
-# 'valid': this address's checksum happens to be all upper case
+is_checksum_address("0x52908400098527886E0F7030069857D2E4169EE7")
+# True: this address's checksum happens to be all upper case
+normalize("0xc02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
+# AddressError: mixed-case address with a bad EIP-55 checksum: '0xc02a...'
 ```
 
-`checksum_status` returns `valid`, `unchecked` (a single-case address that carries no checksum)
-or `invalid`.
+| function | returns |
+|---|---|
+| `to_checksum(addr)` | the EIP-55 form (accepts any casing, with or without `0x`) |
+| `checksum_status(addr)` | `valid`, `unchecked` (single case, no checksum) or `invalid` |
+| `is_address(value)` | `0x` + 40 hex digits, and a correct checksum if mixed case |
+| `is_checksum_address(value)` | exactly the EIP-55 form |
+| `normalize(value)` | the EIP-55 form, or `AddressError` saying what is wrong |
+
+`normalize` doesn't re-case a mixed-case address with a bad checksum, since that would hide the
+typo the checksum caught.
 
 ## Tests
 

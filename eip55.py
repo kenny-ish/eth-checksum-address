@@ -1,11 +1,16 @@
 """EIP-55 checksum addresses."""
 import argparse
 import re
+import string
 import sys
 
 from keccak import keccak256
 
 _HEX40 = re.compile(r"^(0x)?[0-9a-fA-F]{40}$")
+
+
+class AddressError(ValueError):
+    """Raised by normalize() with a message that says what is wrong with the input."""
 
 
 def to_checksum(address: str) -> str:
@@ -33,6 +38,47 @@ def checksum_status(address: str) -> str:
     if body == body.lower() or body == body.upper():
         return "unchecked"
     return "invalid"
+
+
+def _problem(value) -> str:
+    """Why value is not a usable address, or '' if it is."""
+    if not isinstance(value, str):
+        return f"expected str, got {type(value).__name__}"
+    if not value.startswith("0x"):
+        return "missing 0x prefix"
+    body = value[2:]
+    bad = next((i for i, ch in enumerate(body) if ch not in string.hexdigits), None)
+    if bad is not None:
+        return f"non-hex character {body[bad]!r} at position {bad + 2}"
+    if len(body) != 40:
+        return f"expected 40 hex digits, got {len(body)}"
+    if checksum_status(value) == "invalid":
+        return "mixed-case address with a bad EIP-55 checksum"
+    return ""
+
+
+def is_address(value) -> bool:
+    """0x-prefixed, 40 hex digits, and a correct checksum if the casing is mixed."""
+    return _problem(value) == ""
+
+
+def is_checksum_address(value) -> bool:
+    """Exactly the EIP-55 form of an address."""
+    return is_address(value) and to_checksum(value) == value
+
+
+def normalize(value) -> str:
+    """Strip surrounding whitespace, validate, and return the checksummed address.
+
+    Raises AddressError with the reason. A mistyped mixed-case address is an error, never
+    silently re-cased: fixing the casing would hide the typo the checksum just caught.
+    """
+    if isinstance(value, str):
+        value = value.strip()
+    problem = _problem(value)
+    if problem:
+        raise AddressError(f"{problem}: {value!r}")
+    return to_checksum(value)
 
 
 def main() -> int:
