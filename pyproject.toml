@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eth-checksum-address"
-version = "0.1.0"
+version = "0.2.0"
 description = "EIP-55 checksum encoder/validator for Ethereum addresses with a pure-Python Keccak-256"
 readme = "README.md"
 requires-python = ">=3.10"
