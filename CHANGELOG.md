@@ -2,9 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
-## Unreleased
+## 0.2.0 - 2026-10-10
 
 - `is_address`, `is_checksum_address` and `normalize`; `normalize` raises `AddressError` (a `ValueError`) saying what is wrong with the input
+- Keccak tests cross-check the permutation against `hashlib.sha3_256` by switching the padding byte (Keccak-256 and SHA3-256 differ only there)
+- README: why `hashlib.sha3_256` gives different hashes, and security considerations
 
 ## 0.1.0 - 2026-09-26
 

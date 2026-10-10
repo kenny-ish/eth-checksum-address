@@ -47,10 +47,11 @@ def _keccak_f(a: list[int]) -> list[int]:
     return a
 
 
-def keccak256(data: bytes) -> bytes:
+def _sponge(data: bytes, pad: int) -> bytes:
+    """Keccak[c=512] sponge with a 256-bit output and the given first padding byte."""
     state = [0] * 25
     pad_len = _RATE - (len(data) % _RATE)
-    padded = bytearray(data) + b"\x01" + b"\x00" * (pad_len - 1)
+    padded = bytearray(data) + bytes([pad]) + b"\x00" * (pad_len - 1)
     padded[-1] |= 0x80
     for off in range(0, len(padded), _RATE):
         block = padded[off:off + _RATE]
@@ -58,3 +59,8 @@ def keccak256(data: bytes) -> bytes:
             state[i] ^= int.from_bytes(block[8 * i:8 * i + 8], "little")
         state = _keccak_f(state)
     return b"".join(state[i].to_bytes(8, "little") for i in range(4))
+
+
+def keccak256(data: bytes) -> bytes:
+    """Keccak-256 as used by Ethereum: padding byte 0x01."""
+    return _sponge(data, 0x01)

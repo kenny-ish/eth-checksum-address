@@ -1,7 +1,8 @@
+import hashlib
 import unittest
 
 from eip55 import checksum_status, to_checksum
-from keccak import keccak256
+from keccak import _sponge, keccak256
 
 # The test vectors from the EIP-55 specification
 ALL_CAPS = ["0x52908400098527886E0F7030069857D2E4169EE7", "0x8617E340B3D01FA5F11F306F4090FD50E238070D"]
@@ -25,9 +26,15 @@ class KeccakTest(unittest.TestCase):
             keccak256(b"abc").hex(),
             "4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45")
 
-    def test_multi_block(self):
-        # 200 bytes spans two 136-byte blocks; must not raise and must be 32 bytes
-        self.assertEqual(len(keccak256(b"a" * 200)), 32)
+    def test_differs_from_nist_sha3(self):
+        self.assertNotEqual(keccak256(b"").hex(), hashlib.sha3_256(b"").hexdigest())
+
+    def test_permutation_matches_hashlib_sha3(self):
+        # SHA3-256 is the same sponge with padding byte 0x06 instead of 0x01, so switching the
+        # byte must reproduce hashlib exactly; lengths around 136 exercise the block boundary
+        for n in (0, 1, 55, 135, 136, 137, 271, 272, 1000):
+            data = bytes(range(256)) * 4
+            self.assertEqual(_sponge(data[:n], 0x06), hashlib.sha3_256(data[:n]).digest(), n)
 
 
 class Eip55Test(unittest.TestCase):

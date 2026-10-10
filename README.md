@@ -59,6 +59,35 @@ normalize("0xc02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
 `normalize` doesn't re-case a mixed-case address with a bad checksum, since that would hide the
 typo the checksum caught.
 
+## Keccak-256 is not hashlib.sha3_256
+
+Ethereum adopted Keccak before NIST finished standardizing it as SHA-3. The final FIPS 202
+standard changed one thing: the first padding byte, `0x01` in Keccak and `0x06` in SHA-3. The
+permutation is identical, but every digest differs:
+
+```
+keccak256(b"")        c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470
+hashlib.sha3_256(b"") a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
+```
+
+So `hashlib.sha3_256` can't be used for Ethereum hashes. The tests use that difference as a
+cross-check: running this module's sponge with padding `0x06` must reproduce `hashlib.sha3_256`
+exactly, which verifies the permutation against an independent implementation.
+
+## Security considerations
+
+- Per the EIP, a mistyped address passes the check with a probability of about 0.0247%. The
+  checksum protects against typos and copy errors and does nothing against a deliberate attack.
+- A valid checksum doesn't mean it's the address you meant. Address-poisoning attacks send dust
+  from addresses that share the first and last characters of one you use, hoping you copy the
+  wrong one from your history. Those addresses have valid checksums, so compare the whole address.
+- An address written in a single case usually carries no checksum. `unchecked` means there was
+  nothing to verify, and a UI should say that instead of showing the address as valid.
+- EIP-1191 checksums (RSK and a few other chains) mix the chain id into the hash, so those
+  addresses show as `invalid` here even when they are correct for their chain.
+- The pure-Python Keccak is not constant-time. That's fine for public data such as addresses, but
+  don't use it to hash secrets.
+
 ## Tests
 
 ```bash
@@ -66,4 +95,5 @@ python -m unittest -v
 ```
 
 The suite covers all eight test vectors from the EIP, including the all-caps and all-lowercase
-ones, and known Keccak-256 digests. Release notes are in [CHANGELOG.md](CHANGELOG.md).
+ones, known Keccak-256 digests, and the SHA3-256 cross-check. Release notes are in
+[CHANGELOG.md](CHANGELOG.md).
