@@ -3,10 +3,14 @@ import argparse
 import re
 import string
 import sys
+from pathlib import Path
 
 from keccak import keccak256
 
 _HEX40 = re.compile(r"^(0x)?[0-9a-fA-F]{40}$")
+# 0x + 40 hex digits not glued to other letters or digits (so 32-byte hashes don't match)
+_IN_TEXT = re.compile(r"(?<![0-9A-Za-z])0x[0-9a-fA-F]{40}(?![0-9A-Za-z])")
+LABELS = {"valid": "valid", "unchecked": "no checksum (all one case)", "invalid": "INVALID checksum"}
 
 
 class AddressError(ValueError):
@@ -81,17 +85,43 @@ def normalize(value) -> str:
     return to_checksum(value)
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description="Check and produce EIP-55 checksum addresses")
-    ap.add_argument("addresses", nargs="+", help="addresses, or - to read stdin")
-    args = ap.parse_args()
+def scan(text: str):
+    """Yield (line, column, address, status) for every address found in text."""
+    for number, line in enumerate(text.splitlines(), 1):
+        for m in _IN_TEXT.finditer(line):
+            yield number, m.start() + 1, m.group(), checksum_status(m.group())
 
-    items = args.addresses
+
+def scan_files(paths, strict: bool) -> int:
+    checked = problems = 0
+    for path in paths:
+        try:
+            text = Path(path).read_text(encoding="utf-8", errors="replace")
+        except OSError as e:
+            print(f"{path}: {e.strerror}")
+            problems += 1
+            continue
+        for line, col, address, status in scan(text):
+            checked += 1
+            if status == "invalid" or (strict and status == "unchecked"):
+                problems += 1
+                print(f"{path}:{line}:{col}  {LABELS[status]}  {address}")
+    print(f"{checked} address(es) checked, {problems} problem(s)")
+    return 1 if problems else 0
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description="Check and produce EIP-55 checksum addresses")
+    ap.add_argument("items", nargs="+", help="addresses, - to read addresses from stdin, or files with --scan")
+    ap.add_argument("--scan", action="store_true", help="treat the arguments as files and check every address in them")
+    ap.add_argument("--strict", action="store_true", help="also fail on single-case addresses that carry no checksum")
+    args = ap.parse_args(argv)
+    if args.scan:
+        return scan_files(args.items, args.strict)
+
+    items = args.items
     if items == ["-"]:
         items = [line.strip() for line in sys.stdin if line.strip()]
-
-    labels = {"valid": "valid", "unchecked": "no checksum (all one case)",
-              "invalid": "INVALID checksum"}
     bad = 0
     for a in items:
         if not _HEX40.match(a):
@@ -99,8 +129,8 @@ def main() -> int:
             bad += 1
             continue
         status = checksum_status(a)
-        bad += status == "invalid"
-        print(f"{to_checksum(a)}  {labels[status]}")
+        bad += status == "invalid" or (args.strict and status == "unchecked")
+        print(f"{to_checksum(a)}  {LABELS[status]}")
     return 1 if bad else 0
 
 
