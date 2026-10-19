@@ -3,7 +3,8 @@
 [![CI](https://github.com/kenny-ish/eth-checksum-address/actions/workflows/ci.yml/badge.svg)](https://github.com/kenny-ish/eth-checksum-address/actions/workflows/ci.yml)
 
 Validates and produces [EIP-55](https://eips.ethereum.org/EIPS/eip-55) mixed-case checksum
-addresses. Keccak-256 is implemented in pure Python, so there are no dependencies.
+addresses. Keccak-256 is implemented in pure Python, so there are no dependencies. It also lints files for
+addresses with bad checksums.
 
 ## How EIP-55 works
 
@@ -32,13 +33,27 @@ $ cat addresses.txt | eip55 -
 ```
 
 The address is WETH on Ethereum mainnet. The second address in the second call has one letter's
-case flipped. The exit code is `1` if any address has a bad checksum, so the tool can guard config
-files in CI. `python eip55.py ...` works without installing.
+case flipped. The exit code is `1` if any address has a bad checksum. `python eip55.py ...` works
+without installing.
+
+## Lint files
+
+`--scan` treats the arguments as files and checks every address inside them: config files,
+deployment scripts, Solidity sources. Only problems are printed, as `file:line:column`:
+
+```bash
+$ eip55 --scan config.json contracts/Owner.sol
+contracts/Owner.sol:1:26  INVALID checksum  0xc02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+3 address(es) checked, 1 problem(s)
+```
+
+Add `--strict` to also flag single-case addresses, which carry no checksum. The exit code makes
+it a CI step, for example `eip55 --scan $(git ls-files '*.json' '*.sol')`.
 
 ## Library
 
 ```python
-from eip55 import is_address, is_checksum_address, normalize, to_checksum
+from eip55 import is_address, is_checksum_address, normalize, scan, to_checksum
 
 normalize("  0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2\n")
 # '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
@@ -55,6 +70,7 @@ normalize("0xc02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
 | `is_address(value)` | `0x` + 40 hex digits, and a correct checksum if mixed case |
 | `is_checksum_address(value)` | exactly the EIP-55 form |
 | `normalize(value)` | the EIP-55 form, or `AddressError` saying what is wrong |
+| `scan(text)` | `(line, column, address, status)` for every address in a string |
 
 `normalize` doesn't re-case a mixed-case address with a bad checksum, since that would hide the
 typo the checksum caught.
@@ -95,5 +111,5 @@ python -m unittest -v
 ```
 
 The suite covers all eight test vectors from the EIP, including the all-caps and all-lowercase
-ones, known Keccak-256 digests, and the SHA3-256 cross-check. Release notes are in
+ones, known Keccak-256 digests, the SHA3-256 cross-check, and the scanner. Release notes are in
 [CHANGELOG.md](CHANGELOG.md).

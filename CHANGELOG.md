@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented in this file.
 
+## 0.3.0 - 2026-10-19
+
+- `eip55 --scan FILE...` finds every address in source or config files and reports bad checksums as `file:line:column`; `--strict` also flags addresses that carry no checksum
+
 ## 0.2.0 - 2026-10-10
 
 - `is_address`, `is_checksum_address` and `normalize`; `normalize` raises `AddressError` (a `ValueError`) saying what is wrong with the input
